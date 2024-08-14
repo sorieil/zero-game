@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Phaser 숫자 뺄셈 게임</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.55.2/phaser.min.js"></script>
+    <style>
+      body {
+        margin: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background-color: #f0f0f0;
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      const config = {
+        type: Phaser.AUTO,
+        width: 800,
+        height: 600,
+        scene: {
+          preload: preload,
+          create: create,
+          update: update,
+        },
+      };
+
+      const game = new Phaser.Game(config);
+
+      let currentNumber;
+      let attempts;
+      let wins = 0;
+      let options;
+      let currentNumberText;
+      let attemptsText;
+      let winsText;
+      let optionButtons = [];
+      let solutionPath;
+      let solutionPathTexts = [];
+      let playerName;
+      let rankingText;
+      let startTime;
+      let timerText;
+
+      function preload() {
+        this.load.image(
+          "button",
+          "https://labs.phaser.io/assets/sprites/button-bg.png"
+        );
+      }
+
+      function create() {
+        this.add.rectangle(400, 300, 800, 600, 0xf0f0f0);
+        this.add
+          .text(400, 30, "숫자 뺄셈 게임", {
+            fontSize: "32px",
+            fill: "#333",
+            fontStyle: "bold",
+          })
+          .setOrigin(0.5);
+
+        let circle = this.add.circle(400, 100, 50, 0x4a90e2);
+        currentNumberText = this.add
+          .text(400, 100, "", {
+            fontSize: "48px",
+            fill: "#ffffff",
+            fontStyle: "bold",
+          })
+          .setOrigin(0.5);
+        attemptsText = this.add
+          .text(400, 170, "", { fontSize: "24px", fill: "#333" })
+          .setOrigin(0.5);
+        winsText = this.add
+          .text(400, 200, "", { fontSize: "24px", fill: "#333" })
+          .setOrigin(0.5);
+        timerText = this.add
+          .text(400, 230, "", { fontSize: "24px", fill: "#333" })
+          .setOrigin(0.5);
+
+        for (let i = 0; i < 5; i++) {
+          let pathText = this.add
+            .text(160 + i * 120, 280, "", {
+              fontSize: "24px",
+              fill: "#333",
+              align: "center",
+            })
+            .setOrigin(0.5);
+          let box = this.add.rectangle(160 + i * 120, 280, 80, 40, 0xdddddd);
+          box.setStrokeStyle(2, 0x000000);
+          solutionPathTexts.push({ text: pathText, box: box });
+        }
+
+        for (let i = 0; i < 10; i++) {
+          let xPosition = 160 + (i % 5) * 120;
+          let yPosition = 450 + Math.floor(i / 5) * 70;
+          let button = this.add
+            .image(xPosition, yPosition, "button")
+            .setInteractive();
+          button.setScale(0.3);
+          let buttonText = this.add
+            .text(xPosition, yPosition, "", {
+              fontSize: "24px",
+              fill: "#ffffff",
+              fontStyle: "bold",
+            })
+            .setOrigin(0.5);
+
+          button.on("pointerdown", () => makeChoice(i));
+          button.on("pointerover", () => button.setTint(0x7878ff));
+          button.on("pointerout", () => button.clearTint());
+
+          optionButtons.push({ button, text: buttonText });
+        }
+
+        rankingText = this.add.text(600, 50, "", {
+          fontSize: "18px",
+          fill: "#333",
+          align: "right",
+        });
+
+        registerPlayer();
+      }
+
+      function update() {
+        if (startTime) {
+          let elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
+          timerText.setText(`경과 시간: ${elapsedSeconds}초`);
+        }
+      }
+
+      function registerPlayer() {
+        playerName = prompt("플레이어 이름을 입력하세요:");
+        if (!playerName) {
+          playerName = "익명";
+        }
+        initGame();
+      }
+
+      function initGame() {
+        currentNumber = Phaser.Math.Between(50, 100);
+        attempts = 5;
+        solutionPath = generateSolutionPath(currentNumber, 5);
+        options = generateOptions(solutionPath[0]);
+        updateTexts();
+        updateButtons();
+        showSolutionPath();
+        showRanking();
+        startTime = Date.now();
+      }
+
+      function generateSolutionPath(number, steps) {
+        let path = [];
+        let remaining = number;
+        for (let i = 0; i < steps - 1; i++) {
+          let step = Phaser.Math.Between(
+            1,
+            Math.floor(remaining / (steps - i))
+          );
+          path.push(step);
+          remaining -= step;
+        }
+        path.push(remaining);
+        return path;
+      }
+
+      function generateOptions(correctOption) {
+        let opts = [correctOption];
+        while (opts.length < 10) {
+          let newOpt = Phaser.Math.Between(1, Math.min(currentNumber, 20));
+          if (!opts.includes(newOpt) && newOpt !== correctOption) {
+            opts.push(newOpt);
+          }
+        }
+        return Phaser.Utils.Array.Shuffle(opts);
+      }
+
+      function showSolutionPath() {
+        solutionPathTexts.forEach((item, index) => {
+          if (solutionPath[index] !== undefined) {
+            item.text.setText(solutionPath[index]);
+            item.box.setVisible(true);
+          } else {
+            item.text.setText("");
+            item.box.setVisible(false);
+          }
+        });
+      }
+
+      function updateButtons() {
+        optionButtons.forEach((btn, index) => {
+          btn.text.setText(options[index]);
+        });
+      }
+
+      function updateTexts() {
+        currentNumberText.setText(currentNumber);
+        attemptsText.setText(`남은 기회: ${attempts}`);
+        winsText.setText(`승리 횟수: ${wins}`);
+      }
+
+      function makeChoice(index) {
+        currentNumber -= options[index];
+        attempts--;
+
+        if (currentNumber === 0) {
+          wins++;
+          let endTime = Date.now();
+          let elapsedTime = (endTime - startTime) / 1000;
+          updateScore(playerName, wins, elapsedTime);
+          alert(
+            `축하합니다! 0에 도달했습니다. 승리 횟수: ${wins}, 소요 시간: ${elapsedTime.toFixed(
+              2
+            )}초`
+          );
+          initGame();
+        } else if (currentNumber < 0 || attempts === 0) {
+          alert(`게임 오버! 최종 승리 횟수: ${wins}`);
+          updateScore(playerName, wins, null);
+          wins = 0;
+          initGame();
+        } else {
+          solutionPath.shift();
+          options = generateOptions(solutionPath[0]);
+          updateTexts();
+          updateButtons();
+          showSolutionPath();
+        }
+      }
+
+      function updateScore(name, score, time) {
+        let scores = JSON.parse(localStorage.getItem("scores")) || {};
+        if (
+          !scores[name] ||
+          score > scores[name].score ||
+          (score === scores[name].score && time < scores[name].time)
+        ) {
+          scores[name] = { score: score, time: time };
+        }
+        localStorage.setItem("scores", JSON.stringify(scores));
+        showRanking();
+      }
+
+      function showRanking() {
+        let scores = JSON.parse(localStorage.getItem("scores")) || {};
+        let sortedScores = Object.entries(scores).sort((a, b) => {
+          if (b[1].score !== a[1].score) {
+            return b[1].score - a[1].score;
+          }
+          return (a[1].time || Infinity) - (b[1].time || Infinity);
+        });
+        let rankingString = "랭킹:\n";
+        for (let i = 0; i < Math.min(5, sortedScores.length); i++) {
+          let timeString = sortedScores[i][1].time
+            ? ` (${sortedScores[i][1].time.toFixed(2)}초)`
+            : "";
+          rankingString += `${i + 1}. ${sortedScores[i][0]}: ${
+            sortedScores[i][1].score
+          }${timeString}\n`;
+        }
+        rankingText.setText(rankingString);
+      }
+    </script>
+  </body>
+</html>
