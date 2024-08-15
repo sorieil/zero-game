@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Phaser 숫자 뺄셈 게임</title>
+    <title>진회/범회 숫자 뺄셈 게임</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.55.2/phaser.min.js"></script>
     <style>
       body {
@@ -154,28 +154,41 @@
 
       function generateSolutionPath(number, steps) {
         let path = [];
-        let remaining = number;
-        for (let i = 0; i < steps - 1; i++) {
-          let step = Phaser.Math.Between(
-            1,
-            Math.floor(remaining / (steps - i))
-          );
-          path.push(step);
-          remaining -= step;
+        try {
+          let remaining = number;
+          for (let i = 0; i < steps - 1; i++) {
+            let step = Phaser.Math.Between(
+              1,
+              Math.floor(remaining / (steps - i))
+            );
+            path.push(step);
+            remaining -= step;
+          }
+          path.push(remaining);
+        } catch (error) {
+          console.error("Error generating solution path:", error);
+          alert("경로 생성 중 오류가 발생했습니다. 게임을 다시 시작합니다.");
+          initGame();
         }
-        path.push(remaining);
         return path;
       }
 
       function generateOptions(correctOption) {
         let opts = [correctOption];
-        while (opts.length < 10) {
-          let newOpt = Phaser.Math.Between(1, Math.min(currentNumber, 20));
-          if (!opts.includes(newOpt) && newOpt !== correctOption) {
-            opts.push(newOpt);
+        try {
+          while (opts.length < 10) {
+            let newOpt = Phaser.Math.Between(1, Math.min(currentNumber, 20));
+            if (!opts.includes(newOpt) && newOpt !== correctOption) {
+              opts.push(newOpt);
+            }
           }
+          opts = Phaser.Utils.Array.Shuffle(opts);
+        } catch (error) {
+          console.error("Error generating options:", error);
+          alert("옵션 생성 중 오류가 발생했습니다. 게임을 다시 시작합니다.");
+          initGame();
         }
-        return Phaser.Utils.Array.Shuffle(opts);
+        return opts;
       }
 
       function showSolutionPath() {
@@ -203,31 +216,37 @@
       }
 
       function makeChoice(index) {
-        currentNumber -= options[index];
-        attempts--;
+        try {
+          currentNumber -= options[index];
+          attempts--;
 
-        if (currentNumber === 0) {
-          wins++;
-          let endTime = Date.now();
-          let elapsedTime = (endTime - startTime) / 1000;
-          updateScore(playerName, wins, elapsedTime);
-          alert(
-            `축하합니다! 0에 도달했습니다. 승리 횟수: ${wins}, 소요 시간: ${elapsedTime.toFixed(
-              2
-            )}초`
-          );
+          if (currentNumber === 0) {
+            wins++;
+            let endTime = Date.now();
+            let elapsedTime = (endTime - startTime) / 1000;
+            updateScore(playerName, wins, elapsedTime);
+            alert(
+              `축하합니다! 0에 도달했습니다. 승리 횟수: ${wins}, 소요 시간: ${elapsedTime.toFixed(
+                2
+              )}초`
+            );
+            initGame();
+          } else if (currentNumber < 0 || attempts === 0) {
+            alert(`게임 오버! 최종 승리 횟수: ${wins}`);
+            updateScore(playerName, wins, null);
+            wins = 0;
+            initGame();
+          } else {
+            solutionPath.shift();
+            options = generateOptions(solutionPath[0]);
+            updateTexts();
+            updateButtons();
+            showSolutionPath();
+          }
+        } catch (error) {
+          console.error("Error making choice:", error);
+          alert("선택 처리 중 오류가 발생했습니다. 게임을 다시 시작합니다.");
           initGame();
-        } else if (currentNumber < 0 || attempts === 0) {
-          alert(`게임 오버! 최종 승리 횟수: ${wins}`);
-          updateScore(playerName, wins, null);
-          wins = 0;
-          initGame();
-        } else {
-          solutionPath.shift();
-          options = generateOptions(solutionPath[0]);
-          updateTexts();
-          updateButtons();
-          showSolutionPath();
         }
       }
 
